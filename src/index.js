@@ -58,6 +58,10 @@ function configureAdmin() {
 //calling configureAdmin method
 configureAdmin();
 
+//to get and procress json request
+app.use(bodyParser.json()); // for parsing application/json
+app.use(bodyParser.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+
 
 //json response for root api endpoint
 app.get('/', (req,res) => {
@@ -67,6 +71,8 @@ app.get('/', (req,res) => {
     message: "Shop backend server stated successfully."
   });
 });
+
+app.use('/user', require("./user"));
 
 //starting the express server application and listen on given port(8080)
 app.listen(port, () => {
