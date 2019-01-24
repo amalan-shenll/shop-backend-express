@@ -1,0 +1,18 @@
+{
+  "name": "shop-backend-express",
+  "version": "1.0.0",
+  "description": "backend for react-shop application in express",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon src/index.js"
+  },
+  "keywords": [
+    "react-shop-backend"
+  ],
+  "author": "Amalan Jenicious",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.4"
+  }
+}
