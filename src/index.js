@@ -72,7 +72,8 @@ app.get('/', (req,res) => {
   });
 });
 
-app.use('/user', require("./user"));
+app.use('/user', require("./user"));//loading endpoint for user operations
+app.use('/product', require("./product"));//loading endpoint for product operations
 
 //starting the express server application and listen on given port(8080)
 app.listen(port, () => {
