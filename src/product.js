@@ -35,8 +35,8 @@ function isAdmin(req, res, next) {
   }
 }
 
-router.post('/addProduct', isAdmin, (req, res) => {
-  let data = req.body;
+router.post('/addProduct', isAdmin, (req, res) => {//endpoint to add products
+  let data = req.body;//getting request body from json request
   let productName = data.productName || "";
   let price = data.price || "";
   let description = data.description || "";
@@ -54,7 +54,7 @@ router.post('/addProduct', isAdmin, (req, res) => {
       code: "price_required",
       message: "Product price must not be empty."
     });
-  } else if(!_.isNumber(price)) {
+  } else if(!_.isNumber(price)) {//checking whether given input is number
     res.json({
       status: "error",
       code: "price_must_numeric",
@@ -85,14 +85,14 @@ router.post('/addProduct', isAdmin, (req, res) => {
       message: "Product Image url must not be empty."
     });
   } else {
-    let newProduct = Products({
+    let newProduct = Products({//created data to insert into db
       productName,
       price,
       description,
       stockCount,
       productImage,
     });
-    newProduct.save((err, product) => {
+    newProduct.save((err, product) => {//save method will insert data to db
       if(err) {
         res.json({
           status: "error",
@@ -110,12 +110,26 @@ router.post('/addProduct', isAdmin, (req, res) => {
   }
 });
 
-router.get('/list', (req, res) => {
-  let page = req.params.page || 0 ;
-  Products.find({status:"visible"})
-          .skip(20 * page)
-          .limit(20)
-          .exec((err, products) => {
+
+/*
+  .skip(20 * page)
+  .limit(20)
+  those are used to limit the results in response
+  eg: considers there are 100 products in Products collection
+  if you pass "/list?page=1" in url then you are requesting for page 1
+  then first 1-20 records will be returned
+  if you pass "/list?page=2" then your requesting next 20 records
+  then 21-40 records will be returned
+*/
+
+router.get('/list', (req, res) => {//endpoint to list products
+  let pageParam = req.params.page || 1 ;//reading url param for page eg: /list?page=1
+  page = _.isNumber(pageParam) ? pageParam : 1 ;
+  page = page > 0 ? page : 1;
+  Products.find({status:"visible"})//query to find products with status visible
+          .skip(20 * (page-1))//first 20 * page results skipped
+          .limit(20)//to set limit for how many records to return
+          .exec((err, products) => {//to execute the query 'products' will have results
             if(err) {
               res.json({
                 status: "error",
@@ -127,7 +141,7 @@ router.get('/list', (req, res) => {
                 status: "success",
                 code: "products_loaded_success",
                 message: "Products loaded successfully.",
-                products: products
+                products: products//sendind products with response
               })
             }
           });
