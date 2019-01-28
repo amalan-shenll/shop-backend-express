@@ -9,6 +9,7 @@ const randtoken = require('rand-token');
 const Users = require("./schemas/Users");//loading Users Schema
 const Products = require("./schemas/Products");//loading Products Schema
 const Cart = require('./schemas/Cart');//loading Carts Schema
+const Orders = require('./schemas/Orders');//loading Orders Schema
 
 
 router.post('/auth',(req, res) => {//creating endpoint for user authentication
@@ -197,7 +198,7 @@ router.post('/addToCart', (req, res) => {
           } else if(!_.isEmpty(product)) {
             let productToAdd = Cart({
               userId: user._id,
-              product
+              product: product._id
             });
             productToAdd.save((err, prod) => {
               if(err) {
@@ -250,7 +251,9 @@ router.get('/getCart', (req, res) => {
           message: "Error validating authtoken."
         });
       } else if(!_.isEmpty(user)) {
-        Cart.find({userId: user._id}, (err, cart) => {
+        Cart.find({userId: user._id})
+        .populate('product')
+        .exec((err, cart) => {
           if(err) {
             res.json({
               status: "error",
@@ -263,6 +266,201 @@ router.get('/getCart', (req, res) => {
               code: "cart_loaded_success",
               message: "Cart loaded successfully.",
               cart
+            });
+          }
+        });
+      } else {
+        res.json({
+          status: "error",
+          code: "invalid_authtoken",
+          message: "Invalid authtoken."
+        });
+      }
+    });
+  }
+});
+
+router.post('/removeFromCart', (req, res) => {
+  let authToken = req.get("xy-authtoken");
+  let data = req.body;
+  let cartId = data.cartId || "";
+  if(!authToken) {
+    res.json({
+      status: "error",
+      code: "authToken_required",
+      message: "Please provide xy-authtoken with request header."
+    });
+  } else if(!cartId) {
+    res.json({
+      status: "error",
+      code: "productId_required",
+      message: "Please provide product id."
+    });
+  } else {
+    Users.findOne({authToken}, (err, user) => {
+      if(err) {
+        res.json({
+          status: "error",
+          code: "server_error",
+          message: "Error validating authtoken."
+        });
+      } else if(!_.isEmpty(user)) {
+        Cart.deleteOne({_id: cartId, userId: user._id}, (err) => {
+          if(err) {
+            res.json({
+              status: "error",
+              code: "product_remove_failed",
+              message: "Failed to remove product from cart."
+            });
+          } else {
+            res.json({
+              status: "success",
+              code: "product_removed_from_cart",
+              message: "Product removed from the cart successfully."
+            });
+          }
+        });
+      } else {
+        res.json({
+          status: "error",
+          code: "invalid_authtoken",
+          message: "Invalid authtoken."
+        });
+      }
+    });
+  }
+});
+
+router.post('/placeOrder', (req, res) => {
+  let authToken = req.get("xy-authtoken");
+  let data = req.body;
+  let paymentMethod = data.paymentMethod || "";
+  let transactionId = data.transactionId || "";
+  if(!authToken) {
+    res.json({
+      status: "error",
+      code: "authToken_required",
+      message: "Please provide xy-authtoken with request header."
+    });
+  } else if(!paymentMethod) {
+    res.json({
+      status: "error",
+      code: "paymentMethod_required",
+      message: "Please provide paymentMethod."
+    });
+  } else if(!transactionId) {
+    res.json({
+      status: "error",
+      code: "transactionId_required",
+      message: "Please provide transactionId."
+    });
+  } else {
+    Users.findOne({authToken}, (err, user) => {
+      if(err) {
+        res.json({
+          status: "error",
+          code: "server_error",
+          message: "Error validating authtoken."
+        });
+      } else if(!_.isEmpty(user)) {
+        Cart.find({userId: user._id})
+        .populate('product')
+        .exec((err, cartItems) => {
+          if(err) {
+            res.json({
+              status: "error",
+              code: "server_error",
+              message: "Error loading cart items."
+            });
+          } else if(cartItems.length >= 1){
+            let products = [];
+            let totalPrice = 0;
+            cartItems.map((cartItem) => {
+              products.push(cartItem.product);
+              totalPrice += cartItem.product.price;
+            });
+
+            let paymentSchema = {
+              paymentMethod,
+              totalPrice,
+              transactionId
+            };
+            
+            let orderToPlace = Orders({
+              userId: user._id,
+              products,
+              shippingAddress: user.address,
+              payment: paymentSchema,
+            });
+
+            orderToPlace.save((err, order) => {
+              if(err) {
+                res.json({
+                  status: "error",
+                  code: "server_error",
+                  message: "Error while placing order."
+                });
+              } else {
+                res.json({
+                  status: "success",
+                  code: "order_placed_success",
+                  message: "Order placed successfully.",
+                  order
+                });
+              }
+            });
+
+          } else {
+            res.json({
+              status: "error",
+              code: "empty_cart",
+              message: "Cart items not found for given cartIds."
+            });
+          }
+        });
+      } else {
+        res.json({
+          status: "error",
+          code: "invalid_authtoken",
+          message: "Invalid authtoken."
+        });
+      }
+    });
+  }
+});
+
+
+router.get('/orders', (req, res) => {
+  let authToken = req.get("xy-authtoken");
+  if(!authToken) {
+    res.json({
+      status: "error",
+      code: "authToken_required",
+      message: "Please provide xy-authtoken with request header."
+    });
+  } else {
+    Users.findOne({authToken}, (err, user) => {
+      if(err) {
+        res.json({
+          status: "error",
+          code: "server_error",
+          message: "Error validating authtoken."
+        });
+      } else if(!_.isEmpty(user)) {
+        Orders.find({userId: user._id})
+        .exec((err, orders) => {
+          if(err) {
+            res.json({
+              status: "error",
+              code: "server_error",
+              message: "Error while retrieving orders."
+            });
+          } else {
+            res.json({
+              status: "success",
+              code: "user_orders_loaded",
+              message: "User order loaded successfully.",
+              orders
             });
           }
         });
