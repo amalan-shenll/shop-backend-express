@@ -5,8 +5,11 @@ const bcrypt = require('bcrypt');
 const saltRounds = 8;
 const randtoken = require('rand-token');
 
-//loading Users Schema
-const Users = require("./schemas/Users");
+//loading Schemas
+const Users = require("./schemas/Users");//loading Users Schema
+const Products = require("./schemas/Products");//loading Products Schema
+const Cart = require('./schemas/Cart');//loading Carts Schema
+
 
 router.post('/auth',(req, res) => {//creating endpoint for user authentication
   let data = req.body;
@@ -152,6 +155,122 @@ router.post('/register', (req, res) => {
           status: "error",
           code: "user_already_present",
           message: "User with " + email + " already present."
+        });
+      }
+    });
+  }
+});
+
+//api endpoint for add product to cart
+router.post('/addToCart', (req, res) => {
+  let authToken = req.get("xy-authtoken");
+  let data = req.body;
+  let productId = data.productId || "";
+  if(!authToken) {
+    res.json({
+      status: "error",
+      code: "authToken_required",
+      message: "Please provide xy-authtoken with request header."
+    });
+  } else if(!productId) {
+    res.json({
+      status: "error",
+      code: "productId_required",
+      message: "Please provide product id."
+    });
+  } else {
+    Users.findOne({authToken}, (err, user) => {
+      if(err) {
+        res.json({
+          status: "error",
+          code: "server_error",
+          message: "Error validating authtoken."
+        });
+      } else if(!_.isEmpty(user)) {
+        Products.findOne({_id: productId}, (err, product) => {
+          if(err) {
+            res.json({
+              status: "error",
+              code: "server_error",
+              message: "Error validating product id."
+            });
+          } else if(!_.isEmpty(product)) {
+            let productToAdd = Cart({
+              userId: user._id,
+              product
+            });
+            productToAdd.save((err, prod) => {
+              if(err) {
+                res.json({
+                  status: "error",
+                  code: "server_error",
+                  message: "Error while adding product to cart."
+                });
+              } else {
+                res.json({
+                  status: "success",
+                  code: "add_to_cart_success",
+                  message: "Product added to cart successfully."
+                });
+              }
+            });
+          } else {
+            res.json({
+              status: "error",
+              code: "invalid_productId",
+              message: "Product with id " + productId + " not found."
+            });
+          }
+        });
+      } else {
+        res.json({
+          status: "error",
+          code: "invalid_authtoken",
+          message: "Invalid authtoken."
+        });
+      }
+    });
+  }
+});
+
+router.get('/getCart', (req, res) => {
+  let authToken = req.get("xy-authtoken");
+  if(!authToken) {
+    res.json({
+      status: "error",
+      code: "authToken_required",
+      message: "Please provide xy-authtoken with request header."
+    });
+  } else {
+    Users.findOne({authToken}, (err, user) => {
+      if(err) {
+        res.json({
+          status: "error",
+          code: "server_error",
+          message: "Error validating authtoken."
+        });
+      } else if(!_.isEmpty(user)) {
+        Cart.find({userId: user._id}, (err, cart) => {
+          if(err) {
+            res.json({
+              status: "error",
+              code: "server_error",
+              message: "Error getting cart information."
+            });
+          } else {
+            res.json({
+              status: "success",
+              code: "cart_loaded_success",
+              message: "Cart loaded successfully.",
+              cart
+            });
+          }
+        });
+      } else {
+        res.json({
+          status: "error",
+          code: "invalid_authtoken",
+          message: "Invalid authtoken."
         });
       }
     });
